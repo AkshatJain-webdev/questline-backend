@@ -1,0 +1,45 @@
+from bson import ObjectId
+from pymongo.errors import DuplicateKeyError
+
+from app.algorithms.graph import would_create_cycle
+from app.db import MongoDatabase
+from app.models.node import Node
+from app.models.prerequisite import Prerequisite
+from app.services.errors import ConflictError, NotFoundError
+
+
+async def add_prerequisite(
+    db: MongoDatabase, node_id: ObjectId, prerequisite_node_id: ObjectId
+) -> Prerequisite:
+    for required_node_id in (node_id, prerequisite_node_id):
+        if await Node.get(db, required_node_id) is None:
+            raise NotFoundError(f"Node {required_node_id} not found")
+
+    existing = await Prerequisite.list_all(db)
+    if would_create_cycle(existing, node_id, prerequisite_node_id):
+        raise ConflictError("This prerequisite would create a cycle")
+
+    prerequisite = Prerequisite(node_id=node_id, prerequisite_node_id=prerequisite_node_id)
+    try:
+        return await Prerequisite.insert(db, prerequisite)
+    except DuplicateKeyError:
+        raise ConflictError("This prerequisite already exists") from None
+
+
+async def remove_prerequisite(
+    db: MongoDatabase, node_id: ObjectId, prerequisite_node_id: ObjectId
+) -> None:
+    # The child -> parent prerequisite of a non-optional child is owned by the
+    # child's `optional` flag; removing it here would leave the two out of sync.
+    prerequisite_node = await Node.get(db, prerequisite_node_id)
+    if (
+        prerequisite_node is not None
+        and prerequisite_node.parent_id == node_id
+        and not prerequisite_node.optional
+    ):
+        raise ConflictError(
+            "This prerequisite comes from a non-optional child; mark the child optional instead"
+        )
+
+    if not await Prerequisite.delete(db, node_id, prerequisite_node_id):
+        raise NotFoundError("Prerequisite not found")
