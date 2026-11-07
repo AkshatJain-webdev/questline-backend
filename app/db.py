@@ -1,4 +1,4 @@
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -22,7 +22,7 @@ async def create_indexes(db: MongoDatabase) -> None:
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     client = AsyncMongoClient(settings.mongo_uri)
     app.state.mongo_client = client
     app.state.db = client[settings.mongo_db_name]
