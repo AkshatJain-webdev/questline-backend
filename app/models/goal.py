@@ -1,8 +1,6 @@
-from datetime import date
-
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.common import PyObjectId
+from app.models.common import MongoDate, PyObjectId
 
 
 class Goal(BaseModel):
@@ -14,5 +12,5 @@ class Goal(BaseModel):
     color: str
     # Minimum minutes per week before the goal counts as neglected.
     weekly_min_minutes: int = 120
-    target_date: date | None = None
+    target_date: MongoDate | None = None
     archived: bool = False
