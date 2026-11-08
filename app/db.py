@@ -4,14 +4,15 @@ from typing import Any
 
 from fastapi import FastAPI
 from pymongo import ASCENDING, AsyncMongoClient
-from pymongo.asynchronous.database import AsyncDatabase
 
 from app.config import settings
 
-MongoDatabase = AsyncDatabase[dict[str, Any]]
+# One client per process: it's a connection pool, and creating it doesn't connect yet.
+client: AsyncMongoClient[dict[str, Any]] = AsyncMongoClient(settings.mongo_uri)
+db = client[settings.mongo_db_name]
 
 
-async def create_indexes(db: MongoDatabase) -> None:
+async def create_indexes() -> None:
     await db["nodes"].create_index("slug", unique=True)
     await db["nodes"].create_index("goal_id")
     # Also serves lookups by node_id alone (index prefix), so node_id gets no index of its own.
@@ -23,11 +24,8 @@ async def create_indexes(db: MongoDatabase) -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
-    client = AsyncMongoClient(settings.mongo_uri)
-    app.state.mongo_client = client
-    app.state.db = client[settings.mongo_db_name]
     try:
-        await create_indexes(app.state.db)
+        await create_indexes()
         yield
     finally:
         await client.close()

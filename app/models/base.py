@@ -3,7 +3,7 @@ from typing import ClassVar, Self
 from bson import ObjectId
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.db import MongoDatabase
+from app.db import db
 from app.models.common import PyObjectId
 
 
@@ -14,25 +14,25 @@ class AppDBModel(BaseModel):
     id: PyObjectId | None = Field(default=None, alias="_id")
 
     @classmethod
-    async def insert(cls, db: MongoDatabase, model: Self) -> Self:
+    async def insert(cls, model: Self) -> Self:
         # id is left out so Mongo assigns _id itself.
         result = await db[cls.COLLECTION].insert_one(model.model_dump(exclude={"id"}))
         return model.model_copy(update={"id": result.inserted_id})
 
     @classmethod
-    async def replace(cls, db: MongoDatabase, model: Self) -> None:
+    async def replace(cls, model: Self) -> None:
         await db[cls.COLLECTION].replace_one({"_id": model.id}, model.model_dump(exclude={"id"}))
 
     @classmethod
-    async def get(cls, db: MongoDatabase, model_id: ObjectId) -> Self | None:
+    async def get(cls, model_id: ObjectId) -> Self | None:
         document = await db[cls.COLLECTION].find_one({"_id": model_id})
         return cls.model_validate(document) if document else None
 
     @classmethod
-    async def list_all(cls, db: MongoDatabase) -> list[Self]:
+    async def list_all(cls) -> list[Self]:
         return [cls.model_validate(document) async for document in db[cls.COLLECTION].find()]
 
     @classmethod
-    async def delete(cls, db: MongoDatabase, model_id: ObjectId) -> bool:
+    async def delete(cls, model_id: ObjectId) -> bool:
         result = await db[cls.COLLECTION].delete_one({"_id": model_id})
         return result.deleted_count == 1

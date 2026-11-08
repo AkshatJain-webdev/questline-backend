@@ -5,7 +5,7 @@ from typing import Any, ClassVar, Self
 from bson import ObjectId
 from pydantic import Field
 
-from app.db import MongoDatabase
+from app.db import db
 from app.models.base import AppDBModel
 from app.models.common import PyObjectId
 
@@ -60,23 +60,23 @@ class Node(AppDBModel):
     completed_at: datetime | None = None
 
     @classmethod
-    async def list_by_ids(cls, db: MongoDatabase, node_ids: list[ObjectId]) -> list[Self]:
+    async def list_by_ids(cls, node_ids: list[ObjectId]) -> list[Self]:
         cursor = db[cls.COLLECTION].find({"_id": {"$in": node_ids}})
         return [cls.model_validate(document) async for document in cursor]
 
     @classmethod
-    async def list_for_goal(cls, db: MongoDatabase, goal_id: ObjectId) -> list[Self]:
+    async def list_for_goal(cls, goal_id: ObjectId) -> list[Self]:
         cursor = db[cls.COLLECTION].find({"goal_id": goal_id})
         return [cls.model_validate(document) async for document in cursor]
 
     @classmethod
-    async def list_ids_for_goal(cls, db: MongoDatabase, goal_id: ObjectId) -> list[ObjectId]:
+    async def list_ids_for_goal(cls, goal_id: ObjectId) -> list[ObjectId]:
         return await db[cls.COLLECTION].distinct("_id", {"goal_id": goal_id})
 
     @classmethod
-    async def has_children(cls, db: MongoDatabase, node_id: ObjectId) -> bool:
+    async def has_children(cls, node_id: ObjectId) -> bool:
         return await db[cls.COLLECTION].find_one({"parent_id": node_id}, {"_id": 1}) is not None
 
     @classmethod
-    async def delete_for_goal(cls, db: MongoDatabase, goal_id: ObjectId) -> None:
+    async def delete_for_goal(cls, goal_id: ObjectId) -> None:
         await db[cls.COLLECTION].delete_many({"goal_id": goal_id})
