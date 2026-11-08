@@ -11,7 +11,8 @@ class AppDBModel(BaseModel):
     COLLECTION: ClassVar[str]
     model_config = ConfigDict(populate_by_name=True)
 
-    id: PyObjectId | None = Field(default=None, alias="_id")
+    # Read from Mongo's _id, but serialized as id in API responses.
+    id: PyObjectId | None = Field(default=None, validation_alias="_id")
 
     @classmethod
     async def insert(cls, model: Self) -> Self:

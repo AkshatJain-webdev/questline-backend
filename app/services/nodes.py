@@ -2,12 +2,13 @@ from datetime import UTC, datetime
 from typing import Any
 
 from bson import ObjectId
+from pydantic import ValidationError
 from pymongo.errors import DuplicateKeyError
 
 from app.models.goal import Goal
 from app.models.node import Node, NodeStatus
 from app.models.prerequisite import Prerequisite
-from app.services.errors import ConflictError, NotFoundError
+from app.services.errors import ConflictError, InvalidError, NotFoundError
 from app.services.lifecycle import recompute_statuses
 from app.services.prerequisites import add_prerequisite
 
@@ -60,7 +61,10 @@ async def get_node(node_id: ObjectId) -> Node:
 
 async def update_node(node_id: ObjectId, changes: dict[str, Any]) -> Node:
     current = await get_node(node_id)
-    updated = Node.model_validate(current.model_dump() | changes)
+    try:
+        updated = Node.model_validate(current.model_dump() | changes)
+    except ValidationError as error:
+        raise InvalidError.from_validation_error(error) from None
     if updated.goal_id != current.goal_id:
         raise ConflictError("A node can't be moved to another goal")
     if updated.slug != current.slug:

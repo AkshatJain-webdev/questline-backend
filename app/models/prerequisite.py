@@ -26,6 +26,13 @@ class Prerequisite(AppDBModel):
             "node_id", {"prerequisite_node_id": {"$in": prerequisite_node_ids}}
         )
 
+    @classmethod
+    async def list_involving_nodes(cls, node_ids: list[ObjectId]) -> list[Self]:
+        cursor = db[cls.COLLECTION].find(
+            {"$or": [{"node_id": {"$in": node_ids}}, {"prerequisite_node_id": {"$in": node_ids}}]}
+        )
+        return [cls.model_validate(document) async for document in cursor]
+
     # Identified by its unique (node_id, prerequisite_node_id) pair, not its _id.
     @classmethod
     async def delete_pair(cls, node_id: ObjectId, prerequisite_node_id: ObjectId) -> bool:

@@ -1,11 +1,12 @@
 from typing import Any
 
 from bson import ObjectId
+from pydantic import BaseModel, ValidationError
 
 from app.models.goal import Goal
 from app.models.node import Node
 from app.models.prerequisite import Prerequisite
-from app.services.errors import NotFoundError
+from app.services.errors import InvalidError, NotFoundError
 from app.services.lifecycle import recompute_statuses
 
 
@@ -24,9 +25,26 @@ async def list_goals() -> list[Goal]:
     return await Goal.list_all()
 
 
+class GoalTree(BaseModel):
+    goal: Goal
+    nodes: list[Node]
+    # Includes edges to or from other goals' nodes.
+    prerequisites: list[Prerequisite]
+
+
+async def get_goal_tree(goal_id: ObjectId) -> GoalTree:
+    goal = await get_goal(goal_id)
+    nodes = await Node.list_for_goal(goal_id)
+    prerequisites = await Prerequisite.list_involving_nodes([node.id for node in nodes])
+    return GoalTree(goal=goal, nodes=nodes, prerequisites=prerequisites)
+
+
 async def update_goal(goal_id: ObjectId, changes: dict[str, Any]) -> Goal:
     current = await get_goal(goal_id)
-    updated = Goal.model_validate(current.model_dump() | changes)
+    try:
+        updated = Goal.model_validate(current.model_dump() | changes)
+    except ValidationError as error:
+        raise InvalidError.from_validation_error(error) from None
     await Goal.replace(updated)
     return updated
 
