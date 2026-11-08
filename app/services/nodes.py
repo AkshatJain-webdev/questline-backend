@@ -77,7 +77,7 @@ async def update_node(db: MongoDatabase, node_id: ObjectId, changes: dict[str, A
         await add_prerequisite(db, new_parent_id, node_id)
     await Node.replace(db, updated)
     if old_parent_id is not None and old_parent_id != new_parent_id:
-        await Prerequisite.delete(db, old_parent_id, node_id)
+        await Prerequisite.delete_pair(db, old_parent_id, node_id)
 
     # Covers this node's own threshold, its dependents, and the parent it no longer gates.
     affected_ids = [node_id, *await Prerequisite.list_dependent_ids(db, [node_id])]

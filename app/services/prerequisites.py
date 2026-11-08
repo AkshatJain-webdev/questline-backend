@@ -43,6 +43,6 @@ async def remove_prerequisite(
             "This prerequisite comes from a non-optional child; mark the child optional instead"
         )
 
-    if not await Prerequisite.delete(db, node_id, prerequisite_node_id):
+    if not await Prerequisite.delete_pair(db, node_id, prerequisite_node_id):
         raise NotFoundError("Prerequisite not found")
     await recompute_statuses(db, [node_id])

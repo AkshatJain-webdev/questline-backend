@@ -3,9 +3,10 @@ from enum import StrEnum
 from typing import Any, ClassVar, Self
 
 from bson import ObjectId
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
 from app.db import MongoDatabase
+from app.models.base import AppDBModel
 from app.models.common import PyObjectId
 
 
@@ -23,11 +24,9 @@ class NodeStatus(StrEnum):
     ABANDONED = "abandoned"
 
 
-class Node(BaseModel):
+class Node(AppDBModel):
     COLLECTION: ClassVar[str] = "nodes"
-    model_config = ConfigDict(populate_by_name=True)
 
-    id: PyObjectId | None = Field(default=None, alias="_id")
     # Human-readable id like "hld-caching-01", used in commit messages.
     slug: str
     goal_id: PyObjectId
@@ -61,21 +60,6 @@ class Node(BaseModel):
     completed_at: datetime | None = None
 
     @classmethod
-    async def insert(cls, db: MongoDatabase, node: Self) -> Self:
-        # id is left out so Mongo assigns _id itself.
-        result = await db[cls.COLLECTION].insert_one(node.model_dump(exclude={"id"}))
-        return node.model_copy(update={"id": result.inserted_id})
-
-    @classmethod
-    async def replace(cls, db: MongoDatabase, node: Self) -> None:
-        await db[cls.COLLECTION].replace_one({"_id": node.id}, node.model_dump(exclude={"id"}))
-
-    @classmethod
-    async def get(cls, db: MongoDatabase, node_id: ObjectId) -> Self | None:
-        document = await db[cls.COLLECTION].find_one({"_id": node_id})
-        return cls.model_validate(document) if document else None
-
-    @classmethod
     async def list_by_ids(cls, db: MongoDatabase, node_ids: list[ObjectId]) -> list[Self]:
         cursor = db[cls.COLLECTION].find({"_id": {"$in": node_ids}})
         return [cls.model_validate(document) async for document in cursor]
@@ -92,11 +76,6 @@ class Node(BaseModel):
     @classmethod
     async def has_children(cls, db: MongoDatabase, node_id: ObjectId) -> bool:
         return await db[cls.COLLECTION].find_one({"parent_id": node_id}, {"_id": 1}) is not None
-
-    @classmethod
-    async def delete(cls, db: MongoDatabase, node_id: ObjectId) -> bool:
-        result = await db[cls.COLLECTION].delete_one({"_id": node_id})
-        return result.deleted_count == 1
 
     @classmethod
     async def delete_for_goal(cls, db: MongoDatabase, goal_id: ObjectId) -> None:
