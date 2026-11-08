@@ -76,6 +76,11 @@ class Node(BaseModel):
         return cls.model_validate(document) if document else None
 
     @classmethod
+    async def list_by_ids(cls, db: MongoDatabase, node_ids: list[ObjectId]) -> list[Self]:
+        cursor = db[cls.COLLECTION].find({"_id": {"$in": node_ids}})
+        return [cls.model_validate(document) async for document in cursor]
+
+    @classmethod
     async def list_for_goal(cls, db: MongoDatabase, goal_id: ObjectId) -> list[Self]:
         cursor = db[cls.COLLECTION].find({"goal_id": goal_id})
         return [cls.model_validate(document) async for document in cursor]

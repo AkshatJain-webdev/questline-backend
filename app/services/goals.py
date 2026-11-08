@@ -7,6 +7,7 @@ from app.models.goal import Goal
 from app.models.node import Node
 from app.models.prerequisite import Prerequisite
 from app.services.errors import NotFoundError
+from app.services.lifecycle import recompute_statuses
 
 
 async def create_goal(db: MongoDatabase, goal: Goal) -> Goal:
@@ -33,9 +34,11 @@ async def update_goal(db: MongoDatabase, goal_id: ObjectId, changes: dict[str, A
 
 async def delete_goal(db: MongoDatabase, goal_id: ObjectId) -> None:
     await get_goal(db, goal_id)
-    # Prerequisites can cross goals, so this also drops edges from other goals'
-    # nodes into this one.
     node_ids = await Node.list_ids_for_goal(db, goal_id)
+    # Prerequisites can cross goals, so nodes in other goals may have depended on
+    # these; they're rechecked once the edges into this goal are gone.
+    dependent_ids = await Prerequisite.list_dependent_ids(db, node_ids)
     await Prerequisite.delete_involving_nodes(db, node_ids)
     await Node.delete_for_goal(db, goal_id)
     await Goal.delete(db, goal_id)
+    await recompute_statuses(db, dependent_ids)

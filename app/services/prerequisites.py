@@ -6,6 +6,7 @@ from app.db import MongoDatabase
 from app.models.node import Node
 from app.models.prerequisite import Prerequisite
 from app.services.errors import ConflictError, NotFoundError
+from app.services.lifecycle import recompute_statuses
 
 
 async def add_prerequisite(
@@ -21,9 +22,11 @@ async def add_prerequisite(
 
     prerequisite = Prerequisite(node_id=node_id, prerequisite_node_id=prerequisite_node_id)
     try:
-        return await Prerequisite.insert(db, prerequisite)
+        created = await Prerequisite.insert(db, prerequisite)
     except DuplicateKeyError:
         raise ConflictError("This prerequisite already exists") from None
+    await recompute_statuses(db, [node_id])
+    return created
 
 
 async def remove_prerequisite(
@@ -43,3 +46,4 @@ async def remove_prerequisite(
 
     if not await Prerequisite.delete(db, node_id, prerequisite_node_id):
         raise NotFoundError("Prerequisite not found")
+    await recompute_statuses(db, [node_id])

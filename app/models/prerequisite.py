@@ -31,6 +31,16 @@ class Prerequisite(BaseModel):
         cursor = db[cls.COLLECTION].find({"node_id": node_id})
         return [cls.model_validate(document) async for document in cursor]
 
+    # The nodes that list any of these as a prerequisite, i.e. the ones whose
+    # unlock state can change when these do.
+    @classmethod
+    async def list_dependent_ids(
+        cls, db: MongoDatabase, prerequisite_node_ids: list[ObjectId]
+    ) -> list[ObjectId]:
+        return await db[cls.COLLECTION].distinct(
+            "node_id", {"prerequisite_node_id": {"$in": prerequisite_node_ids}}
+        )
+
     # A prerequisite is identified by its (node_id, prerequisite_node_id) pair, which
     # is unique, so callers never need to know its _id.
     @classmethod

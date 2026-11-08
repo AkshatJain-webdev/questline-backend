@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from typing import Any
 
 from bson import ObjectId
@@ -5,9 +6,10 @@ from pymongo.errors import DuplicateKeyError
 
 from app.db import MongoDatabase
 from app.models.goal import Goal
-from app.models.node import Node
+from app.models.node import Node, NodeStatus
 from app.models.prerequisite import Prerequisite
 from app.services.errors import ConflictError, NotFoundError
+from app.services.lifecycle import recompute_statuses
 from app.services.prerequisites import add_prerequisite
 
 
@@ -50,7 +52,8 @@ async def create_node(db: MongoDatabase, node: Node) -> Node:
     parent_id = _auto_prerequisite_parent_id(created)
     if parent_id is not None:
         await add_prerequisite(db, parent_id, created.id)
-    return created
+    await recompute_statuses(db, [created.id])
+    return await get_node(db, created.id)
 
 
 async def get_node(db: MongoDatabase, node_id: ObjectId) -> Node:
@@ -78,12 +81,33 @@ async def update_node(db: MongoDatabase, node_id: ObjectId, changes: dict[str, A
     await Node.replace(db, updated)
     if old_parent_id is not None and old_parent_id != new_parent_id:
         await Prerequisite.delete(db, old_parent_id, node_id)
-    return updated
+
+    # An edit can shift unlocking on both sides: this node's own threshold, its
+    # score as its dependents see it, and the old parent it no longer gates.
+    affected_ids = [node_id, *await Prerequisite.list_dependent_ids(db, [node_id])]
+    if old_parent_id is not None:
+        affected_ids.append(old_parent_id)
+    await recompute_statuses(db, affected_ids)
+    return await get_node(db, node_id)
+
+
+async def complete_node(db: MongoDatabase, node_id: ObjectId) -> Node:
+    node = await get_node(db, node_id)
+    if node.status != NodeStatus.OPEN:
+        raise ConflictError(f"Only an open node can be completed; this one is {node.status}")
+    completed = node.model_copy(
+        update={"status": NodeStatus.DONE, "completed_at": datetime.now(UTC)}
+    )
+    await Node.replace(db, completed)
+    await recompute_statuses(db, await Prerequisite.list_dependent_ids(db, [node_id]))
+    return completed
 
 
 async def delete_node(db: MongoDatabase, node_id: ObjectId) -> None:
     await get_node(db, node_id)
     if await Node.has_children(db, node_id):
         raise ConflictError("Delete or move this node's children first")
+    dependent_ids = await Prerequisite.list_dependent_ids(db, [node_id])
     await Prerequisite.delete_involving_nodes(db, [node_id])
     await Node.delete(db, node_id)
+    await recompute_statuses(db, dependent_ids)
