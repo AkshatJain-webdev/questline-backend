@@ -9,9 +9,7 @@ from app.models.prerequisite import Prerequisite
 
 
 async def recompute_statuses(db: MongoDatabase, node_ids: list[ObjectId]) -> None:
-    # Works in waves: whenever a node becomes done, its dependents are checked in
-    # the next wave, so a completion cascades as far as it unlocks things. Each
-    # node can become done only once and prerequisites are acyclic, so it ends.
+    # Each wave rechecks the dependents of nodes that just became done, so completions cascade.
     pending = node_ids
     while pending:
         newly_done: list[ObjectId] = []

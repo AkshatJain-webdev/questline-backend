@@ -2,7 +2,6 @@ class NotFoundError(Exception):
     pass
 
 
-# The request is well-formed but breaks a rule: a duplicate, a cycle, or a change
-# that would leave the tree inconsistent.
+# Well-formed, but breaks a rule: a duplicate, a cycle, or an inconsistent tree.
 class ConflictError(Exception):
     pass

@@ -13,8 +13,7 @@ def _to_object_id(value: Any) -> ObjectId:
     raise ValueError(f"{value!r} is not a valid ObjectId")
 
 
-# json-only: model_dump() keeps a real ObjectId for passing straight into pymongo; 
-# only JSON output (API responses) gets the string form.
+# JSON-only: model_dump() keeps a real ObjectId for pymongo; API responses get a string.
 PyObjectId = Annotated[
     ObjectId,
     PlainValidator(_to_object_id),
@@ -29,8 +28,7 @@ def _serialize_date(value: date, info: SerializationInfo) -> datetime | str:
     return datetime.combine(value, time())
 
 
-# BSON has no date-only type, so model_dump() turns a date into a midnight
-# datetime for Mongo; Pydantic turns it back into a date when the document is read.
+# BSON has no date type, so it's stored as a midnight datetime and read back as a date.
 MongoDate = Annotated[
     date,
     PlainSerializer(_serialize_date),

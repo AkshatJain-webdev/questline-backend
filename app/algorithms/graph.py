@@ -8,9 +8,7 @@ from app.models.prerequisite import Prerequisite
 def would_create_cycle(
     prerequisites: list[Prerequisite], node_id: ObjectId, prerequisite_node_id: ObjectId
 ) -> bool:
-    # The new edge makes node_id depend on prerequisite_node_id. That closes a loop
-    # exactly when prerequisite_node_id already depends, directly or through other
-    # nodes, on node_id. A node depending on itself is the shortest such loop.
+    # A loop forms exactly when prerequisite_node_id already depends on node_id (or is it).
     depends_on: dict[ObjectId, list[ObjectId]] = defaultdict(list)
     for prerequisite in prerequisites:
         depends_on[prerequisite.node_id].append(prerequisite.prerequisite_node_id)

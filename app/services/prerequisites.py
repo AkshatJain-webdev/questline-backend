@@ -32,8 +32,7 @@ async def add_prerequisite(
 async def remove_prerequisite(
     db: MongoDatabase, node_id: ObjectId, prerequisite_node_id: ObjectId
 ) -> None:
-    # The child -> parent prerequisite of a non-optional child is owned by the
-    # child's `optional` flag; removing it here would leave the two out of sync.
+    # This edge is controlled by the child's `optional` flag; change that instead.
     prerequisite_node = await Node.get(db, prerequisite_node_id)
     if (
         prerequisite_node is not None

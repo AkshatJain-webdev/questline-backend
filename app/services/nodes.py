@@ -14,8 +14,7 @@ from app.services.prerequisites import add_prerequisite
 
 
 def _auto_prerequisite_parent_id(node: Node) -> ObjectId | None:
-    # A non-optional child must be done before its parent can open. Optional
-    # children never gate their parent.
+    # A non-optional child must be done before its parent can open.
     return None if node.optional else node.parent_id
 
 
@@ -28,8 +27,7 @@ async def _check_parent(db: MongoDatabase, node: Node) -> None:
     if parent.goal_id != node.goal_id:
         raise ConflictError("A node's parent must belong to the same goal")
 
-    # Walking up from the new parent and reaching this node means it would become
-    # its own ancestor, looping the display tree.
+    # Reaching this node while walking up from the new parent would loop the display tree.
     ancestor: Node | None = parent
     while ancestor is not None:
         if ancestor.id == node.id:
@@ -74,16 +72,14 @@ async def update_node(db: MongoDatabase, node_id: ObjectId, changes: dict[str, A
 
     old_parent_id = _auto_prerequisite_parent_id(current)
     new_parent_id = _auto_prerequisite_parent_id(updated)
-    # Adding the new prerequisite goes first: it's the only step that can fail (a
-    # cycle), so a failure leaves nothing half-changed.
+    # Added first: it's the only step that can fail (a cycle), so nothing is half-changed.
     if new_parent_id is not None and new_parent_id != old_parent_id:
         await add_prerequisite(db, new_parent_id, node_id)
     await Node.replace(db, updated)
     if old_parent_id is not None and old_parent_id != new_parent_id:
         await Prerequisite.delete(db, old_parent_id, node_id)
 
-    # An edit can shift unlocking on both sides: this node's own threshold, its
-    # score as its dependents see it, and the old parent it no longer gates.
+    # Covers this node's own threshold, its dependents, and the parent it no longer gates.
     affected_ids = [node_id, *await Prerequisite.list_dependent_ids(db, [node_id])]
     if old_parent_id is not None:
         affected_ids.append(old_parent_id)

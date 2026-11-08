@@ -35,8 +35,7 @@ async def update_goal(db: MongoDatabase, goal_id: ObjectId, changes: dict[str, A
 async def delete_goal(db: MongoDatabase, goal_id: ObjectId) -> None:
     await get_goal(db, goal_id)
     node_ids = await Node.list_ids_for_goal(db, goal_id)
-    # Prerequisites can cross goals, so nodes in other goals may have depended on
-    # these; they're rechecked once the edges into this goal are gone.
+    # Prerequisites can cross goals, so nodes elsewhere may unlock once these are gone.
     dependent_ids = await Prerequisite.list_dependent_ids(db, node_ids)
     await Prerequisite.delete_involving_nodes(db, node_ids)
     await Node.delete_for_goal(db, goal_id)
