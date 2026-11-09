@@ -7,6 +7,8 @@ class Settings(BaseSettings):
 
     mongo_uri: str = "mongodb://localhost:27017"
     mongo_db_name: str = "questline"
+    # Set as a JSON list in the environment, e.g. ["https://app.example.com"].
+    cors_allowed_origins: list[str] = ["http://localhost:3000"]
 
 
 settings = Settings()

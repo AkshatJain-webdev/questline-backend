@@ -54,7 +54,7 @@ async def update_node(node_id: PyObjectId, body: NodeUpdate) -> Node:
     return await nodes.update_node(node_id, body.model_dump(exclude_unset=True))
 
 
-# Stand-in until sessions (M2) are what complete a node.
+# Stand-in until sessions (M3) are what complete a node.
 @router.post("/{node_id}/complete")
 async def complete_node(node_id: PyObjectId) -> Node:
     return await nodes.complete_node(node_id)
