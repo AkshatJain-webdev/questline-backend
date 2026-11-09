@@ -11,14 +11,13 @@ class AppDBModel(BaseModel):
     COLLECTION: ClassVar[str]
     model_config = ConfigDict(populate_by_name=True)
 
-    # Read from Mongo's _id, but serialized as id in API responses.
-    id: PyObjectId | None = Field(default=None, validation_alias="_id")
+    # Generated here, as pymongo would anyway, so a model always has an id; stored as _id.
+    id: PyObjectId = Field(default_factory=ObjectId, validation_alias="_id")
 
     @classmethod
     async def insert(cls, model: Self) -> Self:
-        # id is left out so Mongo assigns _id itself.
-        result = await db[cls.COLLECTION].insert_one(model.model_dump(exclude={"id"}))
-        return model.model_copy(update={"id": result.inserted_id})
+        await db[cls.COLLECTION].insert_one({"_id": model.id, **model.model_dump(exclude={"id"})})
+        return model
 
     @classmethod
     async def replace(cls, model: Self) -> None:
