@@ -2,10 +2,15 @@
 name = "questline-backend"
 version = "0.1.0"
 description = "Questline backend — FastAPI + MongoDB API and services for a skill-tree goal tracker."
-requires-python = ">=3.12"
+requires-python = ">=3.15"
 dependencies = [
     "fastapi==0.162.0",
-    "uvicorn[standard]==0.54.0",
+    # uvicorn[standard] without PyYAML, which has no Python 3.15 wheels yet and is only used for YAML log configs.
+    "uvicorn==0.54.0",
+    "httptools==0.9.0",
+    "uvloop==0.23.0; sys_platform != 'win32'",
+    "watchfiles==1.3.0",
+    "websockets==17.4",
     "pymongo==4.19.0",
     "pydantic==2.14.2",
     "pydantic-settings==2.16.2",
