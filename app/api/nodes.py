@@ -44,6 +44,11 @@ class NodeUpdate(BaseModel):
     resources: dict[str, Any] | None = None
 
 
+@router.get("")
+async def list_nodes() -> list[Node]:
+    return await nodes.list_nodes()
+
+
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_node(body: NodeCreate) -> Node:
     return await nodes.create_node(Node.model_validate(body.model_dump()))

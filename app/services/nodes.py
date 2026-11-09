@@ -52,6 +52,10 @@ async def create_node(node: Node) -> Node:
     return await get_node(created.id)
 
 
+async def list_nodes() -> list[Node]:
+    return await Node.list_all()
+
+
 async def get_node(node_id: ObjectId) -> Node:
     node = await Node.get(node_id)
     if node is None:
