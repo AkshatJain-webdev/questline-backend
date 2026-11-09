@@ -36,3 +36,7 @@ class AppDBModel(BaseModel):
     async def delete(cls, model_id: ObjectId) -> bool:
         result = await db[cls.COLLECTION].delete_one({"_id": model_id})
         return result.deleted_count == 1
+
+    @classmethod
+    async def delete_all(cls) -> None:
+        await db[cls.COLLECTION].delete_many({})

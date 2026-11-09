@@ -17,7 +17,7 @@ The API runs at <http://localhost:8000>, with interactive docs at <http://localh
 
 ## Seed the database
 
-Load the starter roadmap once, against an empty database:
+Load the starter roadmap. **This deletes all existing goals, nodes and prerequisites first:**
 
 ```bash
 python -m scripts.seed

@@ -5,6 +5,7 @@ from pathlib import Path
 from app.db import client, create_indexes
 from app.models.goal import Goal
 from app.models.node import Node
+from app.models.prerequisite import Prerequisite
 from app.services.goals import create_goal
 from app.services.nodes import create_node
 from app.services.prerequisites import add_prerequisite
@@ -15,9 +16,10 @@ SEED_PATH = Path(__file__).with_name("interview_prep.json")
 async def main() -> None:
     try:
         await create_indexes()
-        # Goals have no unique key, so loading twice would duplicate them.
-        if await Goal.list_all():
-            raise SystemExit("The database already has goals; seed only an empty database.")
+        # Wipes the old data first, so the script can be rerun.
+        await Prerequisite.delete_all()
+        await Node.delete_all()
+        await Goal.delete_all()
 
         # The file has "goals", "nodes" and "prerequisites" lists; nodes name their goal by title.
         seed = json.loads(SEED_PATH.read_text(encoding="utf-8"))
